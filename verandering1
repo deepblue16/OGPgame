@@ -48,7 +48,8 @@ public class Bag {
 	}
 	
 	/**
-	 * post: getGems has g as an extra element
+	 * @post: getGems has g as an extra element
+	 *
 	 */
 	public void addGem(Gem g) {
 		gems.add(g);
