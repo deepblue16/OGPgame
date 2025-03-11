@@ -1,127 +1,42 @@
-package ogp.game;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.stream.IntStream;
-
-public class Bag {
-	
-
-	/**
-	 * Geeft aan of de player wel of niet een ship heeft.
-	 * 
-	 * @representationObject
-	 * ship null means not collected
-	 */
-	private Spaceship ship;
-	
-	/**
-	 * Stores a list of gems, cannot contain null elements
-	 * 
-	 * @invar | gems != null
-	 * @invar | gems.stream().allMatch(g -> g != null)
-	 * @representationObject
-	 */
-	private ArrayList<Gem> gems;
-	
-	public Spaceship getShip() {
-		return ship;
-	}
-	
-	/**
-	 * @inspects | this
-	 * @creates | result
-	 */
-	public ArrayList<Gem> getGems() {
-		return new ArrayList<>(gems);
-	}
-	
-	
-		
-	/**
-	 * Initialiseert dit object met een ship en een lijst van gems.
-	 * 
-	 * @pre | gems != null
-	 * @pre | gems.stream().allMatch(g -> g != null)
-	 * @throws IllegalArgumentException | gems == null || gems.contains(null)
-	 * @post | getShip() == ship
-	 * @post | getGems().containsAll(gems) && gems.containsAll(getGems())
-	 */
-	public Bag(Spaceship ship, ArrayList<Gem> gems) {
-		if (gems == null || gems.contains(null)) 
-	        throw new IllegalArgumentException("Gems list cannot be null or contain null elements");
-		this.ship = ship;
-		this.gems = new ArrayList<>(gems);
-	}
-	
-	
-	/**
-	 * If possible, upgrade the ship with u and remove a corresponding gem.
-	 * 
-	 * @pre | u != null
-	 * @post | getShip() == old(getShip())
-	 * // postconditie toevoegen hier !!!
-	 * @mutates | this
-	 */
-	public void tryUpgradeShip(Upgrade u) {
-	}
-
-	
-	/**
-	 * Stelt of er een ship wel of niet is.
-	 * @mutates | this
-	 * @post | getShip() == ship
-	 * @post | getGems() == old(getGems())
-	 */
-	public void setShip(Spaceship ship) {
-		this.ship = ship;
-		
-	}
-	
-	/**
-	 * @post: getGems has g as an extra element
-	 *
-	 */
-	public void addGem(Gem g) {
-		gems.add(g);
-
-	}
-	
-	public Bag copy() {
-		return new Bag(ship, new ArrayList<>(gems));
-	}
-	
-	/**
-	 * LEGIT
-	 */
-	public String stringContents() {
-		String res = "SHIP:0   ";
-		if (ship != null) {
-			res = "SHIP:1" + " ( " + ship.contents() + ")    ";
-		}
-
-    	int[] upgradeNumbers = Upgrade.giveUpgradesFrom(gems);
-    	for (Upgrade u : Upgrade.values() ) {
-    		res = res + u.toSmallString() + ": " + upgradeNumbers[u.idx()] + "  "; 
-    	}
-    	return res;
-	}
-	
-	/**
-	 * Attempts to upgrade the ship from the list of gems.
-	 * Has some effect if
-	 * - ship != null
-	 * - ship is missing some upgrades
-	 * - some of these missing upgrades appear in the list of gems (see Upgrade.giveUpgradeFrom)
-	 * In that case some gems are deleted and serve to upgrade the ship. 
-	 */
-	public void update() {
-		}
-
+	public void atomicTick(int dt) {
+	    System.out.println("🔄 atomicTick aangeroepen, dt = " + dt);
 	    
-			
-				
-		
-	}
-	
+	    player.updateSpeedWithGravity(gravCst, dt, gravitySwitched);
+	    System.out.println("🌍 Gravity toegepast, nieuwe snelheid: " + player.getSpeed().x() + ", " + player.getSpeed().y());
 
+	    Rectangle newHitbox = player.getHitbox().plus(player.getSpeed()); 
+	    var mbColliderRect = Rectangle.selectCollider(newHitbox, rectangles());
+
+	    if (mbColliderRect.isEmpty()) { 
+	        System.out.println("✅ Geen botsing, speler beweegt naar: " + newHitbox.getBL());
+	        player.setPosition(newHitbox.getBL());
+	    } else { 
+	        Rectangle col = mbColliderRect.get(); 
+	        System.out.println("⚠️ Botsing met object op: " + col);
+
+	        Gem mbGem = findGemWithRect(col);
+	        if (shipOnField != null && shipOnField.getHbox().equals(col)) { 
+	            System.out.println("🚀 Spaceship verzameld!");
+	            player.setShip(shipOnField);
+	            shipOnField = null;
+	        } else if (mbGem != null) { 
+	            System.out.println("💎 Gem verzameld: " + mbGem.getColor());
+	            player.addGemToBag(mbGem);
+	            gemsOnField = Arrays.stream(gemsOnField)
+	                                .filter(g -> !g.equals(mbGem))
+	                                .toArray(Gem[]::new);
+	        } else { 
+	            System.out.println("⬇️ Botsing met muur/blok, snelheid wordt aangepast.");
+	            Vector newSpeed = Rectangle.speedFromCollision(player.getHitbox(), player.getSpeed(), col);
+	            System.out.println("🏎️ Snelheid voor aanpassing: " + player.getSpeed().x() + ", " + player.getSpeed().y());
+	            player.setSpeed(newSpeed);
+	            System.out.println("🚀 Snelheid na aanpassing: " + player.getSpeed().x() + ", " + player.getSpeed().y());
+
+	            Rectangle newHitbox2 = player.getHitbox().plus(player.getSpeed());
+	            if (Rectangle.selectCollider(newHitbox2, rectangles()).isEmpty()) { 
+	                System.out.println("✅ Geen tweede botsing, speler beweegt naar: " + newHitbox2.getBL());
+	                player.setPosition(newHitbox2.getBL());
+	            }
+	        }
+	    }
+	}
