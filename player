@@ -1,0 +1,344 @@
+package ogp.game;
+
+
+import java.util.ArrayList;
+
+import ogp.util.Chronometer;
+import ogp.util.Point;
+import ogp.util.Rectangle;
+import ogp.util.Vector;
+/**
+ * Represents the player in the game, with a position, speed, inventory (bag), and movement speeds.
+ * 
+ * @invar | getHitbox() != null
+ * @invar | getBag() != null
+ * @invar | getHspeed() > 0
+ * @invar | getVspeed() > 0
+ * @invar | getHitbox().getBL().equals(getPositionBL())
+ */
+public class Player {
+	
+	/**
+	 * @invar | hitbox.getBL().equals(position)
+	 * @invar | gravSpeedAcc >= 0
+	 * @invar | hspeed > 0
+	 * @invar | vspeed > 0
+	 * 
+	 * @invar | jumpChron != null
+	 * @invar | jumpTimeAcc >= 0
+	 * 
+	 * @invar | dashChron != null
+	 * @invar | dashTimeAcc >= 0
+	 * 
+	 * @invar | bag != null
+	 * 
+	 */
+	private Point position;//bottom left of hitbox
+	private Rectangle hitbox;
+	private Vector speed;
+	/**
+	 * @representationObject
+	 */
+	private Bag bag;
+	private double gravSpeedAcc; //Speed accumulator. Type is double for precision
+	private final int hspeed; //typical horizontal speed (absolute value)
+	private final int vspeed; //typical jump speed (absolute value)
+	
+	private Chronometer jumpChron = new Chronometer(); 
+	private int jumpTimeAcc = 0;
+	
+	private Chronometer dashChron = new Chronometer();
+	private int dashTimeAcc = 0;
+	private boolean dashing;
+	
+	/**
+	 * Bottom left point of this player hitbox
+	 */
+	public Point getPositionBL() {
+		return hitbox.getBL();
+	}
+	
+	/**
+	 * Returns the current speed of this player.
+	 */
+	public Vector getSpeed() {
+		return new Vector(speed.x(), speed.y());
+	}
+
+	/**
+	 * Returns the player's bag, which contains collected gems and a possible spaceship.
+	 */
+	public Bag getBag() {
+	    return bag.copy(); 
+	}
+
+	/**
+	 * Returns the spaceship currently collected by this player, if any.
+	 */
+	public Spaceship getShip() {
+	    return bag.getShip();
+	}
+
+	/**
+	 * Returns the list of collected gems.
+	 */
+	public ArrayList<Gem> getGems() {
+	    return new ArrayList<>(bag.getGems());
+	}
+
+	/**
+	 * Returns the hitbox (bounding rectangle) of this player.
+	 */
+	public Rectangle getHitbox() {
+	    return hitbox; // representation exposure?
+	}
+	
+	/**
+	 * Returns the horizontal speed of this player.
+	 */
+	public int getHspeed() {
+	    return hspeed;
+	}
+
+	/**
+	 * Returns the jump speed of this player.
+	 */
+	public int getVspeed() {
+	    return vspeed;
+	}
+
+	/**
+	 * Creates and returns a copy of this player.
+	 * 
+	 * The copy has the same hitbox, speed, bag contents, and movement speeds as the original.
+	 * 
+	 * @creates | result
+	 * @post | result.getHitbox().equals(getHitbox())
+	 * @post | result.getSpeed().equals(getSpeed())
+	 * @post | result.getBag().getGems().containsAll(getBag().getGems()) && getBag().getGems().containsAll(result.getBag().getGems())
+	 * @post | result.getHspeed() == getHspeed()
+	 * @post | result.getVspeed() == getVspeed()
+	 * @post | result.getBag().getShip() == getBag().getShip()
+	 */
+	public Player copy() {
+	    return new Player(
+	        new Rectangle(hitbox.getTL(), hitbox.getWidth(), hitbox.getHeight()),
+	        new Vector(speed.x(), speed.y()),
+	        bag.copy(),
+	        hspeed,
+	        vspeed
+	    );
+	}
+	
+	/**
+	 * Initializes a new player with a given hitbox, speed, inventory (bag), and movement speeds.
+	 * 
+	 * @throws IllegalArgumentException | hitbox == null
+	 * @throws IllegalArgumentException | speed == null
+	 * @throws IllegalArgumentException | bag == null
+	 * @throws IllegalArgumentException | hspeed <= 0
+	 * @throws IllegalArgumentException | vspeed <= 0
+	 * 
+	 * @post | getHitbox().equals(hitbox)
+	 * @post | getSpeed().equals(speed)
+     * @post | getBag().getGems().containsAll(bag.getGems()) && bag.getGems().containsAll(getBag().getGems())
+	 * @post | getHspeed() == hspeed
+	 * @post | getVspeed() == vspeed
+	 * @post | getPositionBL().equals(hitbox.getBL())
+	 * @post | getBag().getGems().isEmpty()
+	 * @post | getBag().getShip() == null
+	 */
+	public Player(Rectangle hitbox, Vector speed, Bag bag, int hspeed, int vspeed) {
+		
+		if (hitbox == null) throw new IllegalArgumentException("Hitbox cannot be null.");
+	    if (bag == null) throw new IllegalArgumentException("Bag cannot be null.");
+	    if (hspeed <= 0) throw new IllegalArgumentException("Horizontal speed must be greater than zero.");
+	    if (vspeed <= 0) throw new IllegalArgumentException("Vertical speed must be greater than zero.");
+	    if (speed == null) throw new IllegalArgumentException("Speed cannot be null.");
+		
+	    this.bag = bag.copy();
+		this.position = hitbox.getBL();
+		this.hitbox = hitbox;
+		this.speed = speed;
+
+		this.hspeed = hspeed;
+		this.vspeed = vspeed;
+		this.gravSpeedAcc = 0; //legit
+	}
+	
+	/**
+	 * this player adds g in its list of collected gems
+	 * @pre | g != null
+	 * @mutates | this
+	 * @post | getBag().getGems().contains(g)
+	 * @post | getBag().getGems().size() == old(getBag().getGems()).size() + 1
+	 */
+	 public void addGemToBag(Gem g) {
+		bag.addGem(g);
+		bag.update(); // verandering 2
+	 }
+	 
+	 
+
+	
+	/**
+	 * @pre | ship != null
+	 * @mutates | this
+	 * @post | getBag().getShip().equals(ship)
+	 * @post | getPositionBL().equals(ship.getHbox().getBL())
+	 * this player collects the ship
+	 */
+	public void setShip(Spaceship ship) {
+		bag.setShip(ship);
+	    this.hitbox = ship.getHbox().upscale();
+	    bag.update(); // verandering 1 voor laatste bug: zorgt dat de ship alle gems die al waren bij de bag updaten !
+	    this.position = this.hitbox.getBL();
+	}
+
+	/**
+	 * LEGIT
+	 * 
+	 * If possible, attempts to upgrade this player ship with upgrades
+	 * correspdonding to this player list of gems.
+	 * See Bag.update doc. 
+	 */
+	public void updateBag() {
+		bag.update();
+	}
+	
+	/**
+	 * Sets the player's position to the given bottom-left point.
+	 * 
+	 * @pre | botLeft != null
+	 * @mutates | this
+	 * @post | getPositionBL().equals(botLeft)
+	 */
+	public void setPosition(Point botLeft) {
+		this.position = botLeft;
+	    this.hitbox = new Rectangle(
+	        new Point(botLeft.getX(), botLeft.getY() - this.hitbox.getHeight()), 
+	        this.hitbox.getWidth(), 
+	        this.hitbox.getHeight()
+	    );
+	}
+
+
+
+	
+	/**
+	 * Sets the player's speed to the given vector.
+	 * 
+	 * @pre | nspeed != null
+	 * @mutates | this
+	 * @post | getSpeed().equals(nspeed)
+	 */
+	public void setSpeed(Vector nspeed) {
+		this.speed = new Vector(nspeed.x(), nspeed.y());
+	}
+	
+	/**
+	 * Adds the given vector to the player's current speed.
+	 * 
+	 * @pre | other != null
+	 * @mutates | this
+	 * @post | getSpeed().equals(old(getSpeed()).plus(other))
+	 */
+	public void addSpeed(Vector other) {
+		this.speed = new Vector(this.speed.x() + other.x(), this.speed.y() + other.y());
+	}
+	
+	/**
+	 * LEGIT
+	 * 
+	 * @param elapsed how much time passed, in ms.
+	 * @param gravSwitch is gravity switched?
+	 */
+	public void updateSpeedWithGravity(int gcst, int elapsed, boolean gravSwitch) {
+		gravSpeedAcc = gravSpeedAcc + ((double) elapsed / 1000) * ((double) gcst);
+		if (gravSpeedAcc >= 1) {
+			int cut = (int) Math.floor(gravSpeedAcc);
+			gravSpeedAcc -= cut;
+			if (!gravSwitch) {	this.speed = this.speed.plus(new Vector(0,cut)); }
+			else this.speed = this.speed.minus(new Vector(0,cut));
+		}
+	}
+	
+	/**
+	 * Attempts to upgrade the player's spaceship using the given upgrade.
+	 * // documentatie 
+	 * @pre | u != null
+	 */
+	public void tryUpgradeShip(Upgrade u) {
+		if (bag.getShip() == null) return;
+	    bag.tryUpgradeShip(u);
+	}
+
+	/**
+	 * Updates and returns the jump time accumulator in milliseconds.
+	 * 
+	 * @mutates | this
+	 */
+	public int updateAndGiveJumpTime() {
+		jumpTimeAcc += jumpChron.nanosecondsSinceLast() / 1000000;
+		return jumpTimeAcc;
+	}
+	
+	/**
+	 * LEGIT
+	 */
+	public void resetJumpTime() {
+		jumpTimeAcc = 0;
+	}
+	
+	/**
+	 * LEGIT
+	 */
+	public void resetDashTime() {
+		dashChron.nanosecondsSinceLast(); //reset chron
+		dashTimeAcc = 0;
+		
+	}
+	
+	/**
+	 * LEGIT
+	 */
+	public void updateDashingStatus() {
+		if (dashing) {
+			dashTimeAcc += dashChron.nanosecondsSinceLast();
+			if (dashTimeAcc /1000000 >= 150) {
+				dashing = false;
+			}
+		}
+	}
+	
+	/**
+	 * @inspects | this
+	 */
+	public boolean isDashing() {
+		return dashing;
+	}
+	 
+	/**
+	 * This player dashes during 150 ms
+	 * @mutates | this
+	 * @post | isDashing()
+	 */
+	public void setDashing() {
+	    dashing = true;
+	    dashChron.nanosecondsSinceLast();
+	    dashTimeAcc = 0;
+	}
+	
+	/**
+	 * @pre | r != null
+	 * @mutates | this
+	 * @post | getHitbox().equals(r)
+	 */
+	public void setHitbox(Rectangle r) {
+		hitbox = new Rectangle(r.getTL(), r.getWidth(), r.getHeight());
+		this.position = this.hitbox.getBL();
+	}
+	
+
+	
+}
