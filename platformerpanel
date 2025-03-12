@@ -1,0 +1,280 @@
+package ogp.ui;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import ogp.game.Block;
+import ogp.game.Gem;
+import ogp.game.Spaceship;
+import ogp.game.Upgrade;
+import ogp.game.World;
+import ogp.util.Chronometer;
+import ogp.util.Point;
+import ogp.util.Rectangle;
+
+@SuppressWarnings("serial")
+public class PlatformerPanel extends JPanel {
+	
+	/**
+	 * @pre | uifactor > 0
+	 */
+	private final int uifactor; //1px = uifactor * ingame length unit
+	private Chronometer chron;
+	
+	private ArrayList<World> worlds;
+	private World world; private int worldIdx;
+	
+	private KeyInput keyInput;
+	private JLabel bagDisplay;
+	
+	
+	/**
+	 * LEGIT
+	 * 
+	 * @pre | worlds.size() >= 1
+	 */
+	public PlatformerPanel(int uifactor, ArrayList<World> worlds, KeyInput keyInput) {
+		if (worlds == null) { throw new IllegalArgumentException(); }
+		if (worlds.stream().anyMatch(w -> w == null)) { throw new IllegalArgumentException(); }
+		if (worlds.size() == 0) { throw new IllegalArgumentException(); }
+		
+		if (keyInput == null) { throw new IllegalArgumentException(); }
+		if (uifactor <= 0) { throw new IllegalArgumentException(); }
+		
+		
+		this.uifactor = uifactor;
+		
+		this.worlds = worlds;
+		this.world = worlds.get(0);
+		this.worldIdx = 0;
+		
+		this.keyInput = keyInput;
+		this.chron = new Chronometer();
+		
+		this.addKeyListener(keyInput);
+		this.setPreferredSize(new Dimension(world.getWidth()/uifactor,world.getHeight()/uifactor));
+		
+		this.bagDisplay = new JLabel("empty");
+		this.add(bagDisplay);
+	}
+	
+	@Override
+	/**
+	 * LEGIT
+	 */
+	public boolean isFocusable() {
+		return true;
+	}
+	
+    @Override
+    /**
+     * LEGIT
+     */
+    protected void paintComponent(Graphics g)
+    {
+        super.paintComponent(g);
+
+        updateGameState();
+        paintGameState(g);
+        pauseForBreath();
+        repaint(); //ultimately a recursive call
+    }
+    
+ 
+    
+    
+    
+    
+
+    
+
+    
+    private void updateGameState() {
+        boolean allGemsCollected = world.getGemsOnField().length == 0; // Zijn alle gems verzameld?
+        boolean flagTouched = world.getVictory(); // Heeft de speler de vlag al aangeraakt?
+
+        // Reset victory als de speler de vlag aanraakt voordat alle gems verzameld zijn
+        if (flagTouched && !allGemsCollected) {
+            world.resetVictory(); // Voeg een resetVictory() methode toe aan World
+        }
+
+        // Pas veranderen van wereld als de vlag geraakt wordt EN alle gems verzameld zijn
+        if (flagTouched && allGemsCollected) { 
+            if (worldIdx + 1 < worlds.size()) {
+                worldIdx++;  // Ga naar de volgende wereld
+                world = worlds.get(worldIdx);
+            } else {
+                System.exit(0);  // Stop het spel als er geen volgende wereld is
+            }
+        }
+
+        int newWidth = world.getWidth();
+        int newHeight = world.getHeight();
+
+        if (this.getPreferredSize().width != newWidth / uifactor || this.getPreferredSize().height != newHeight / uifactor) {
+            this.setPreferredSize(new Dimension(newWidth / uifactor, newHeight / uifactor));
+            this.revalidate(); // Refresh layout
+
+            Window window = SwingUtilities.getWindowAncestor(this);
+            if (window instanceof JFrame) {
+                ((JFrame) window).pack();
+            }
+        }
+
+        var nanoseconds = chron.nanosecondsSinceLast();
+        
+        world.movePlayerHorz(keyInput.getHorizontalMovement());
+
+        if (keyInput.consumeSpacePressed()) {
+            world.jumpPlayer();
+        }
+
+     // ✅ Nieuwe correcte checks voor powers
+        boolean hasShip = world.getPlayerBag().getShip() != null;
+
+        if (hasShip && keyInput.consumeGravKey() && world.getPlayerBag().getShip().hasUpgrade(Upgrade.GRAVSWITCH)) {
+            world.trySwitchGravity();
+        }
+
+        if (hasShip && keyInput.consumeDashKey() && world.getPlayerBag().getShip().hasUpgrade(Upgrade.HORZDASH)) {
+            world.makePlayerDash();
+        }
+
+
+        
+        world.tick(nanoseconds);
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    private void paintGameState(Graphics g) {
+        //clear
+        g.setColor(Color.LIGHT_GRAY.darker());
+        fillGameRectangle(g, world.getField());
+        g.fillRect(0, 0, world.getWidth(), world.getHeight());
+
+        //paint player
+        Image img = world.getPlayerBag().getShip() == null ?
+                ImageSet.playericon.getImage() : ImageSet.shipIcon.getImage();
+
+        Rectangle playerBox = world.getPlayerRect();
+
+        if (world.getGravSwitched() && world.getPlayerBag().getShip() != null) {
+            // Correctie: Y-coördinaat aanpassen zodat de spaceship niet verdwijnt in de grond
+            g.drawImage(img,
+                        playerBox.getTL().getX() / uifactor, 
+                        (playerBox.getTL().getY() + playerBox.getHeight()) / uifactor, // Verplaats de spaceship omhoog
+                        playerBox.getWidth() / uifactor, 
+                        -playerBox.getHeight() / uifactor, // Negatieve hoogte voor spiegelen
+                        this);
+        } else {
+            // Normale rendering van de speler/spaceship
+            g.drawImage(img,
+                        playerBox.getTL().getX() / uifactor, 
+                        playerBox.getTL().getY() / uifactor,
+                        playerBox.getWidth() / uifactor,
+                        playerBox.getHeight() / uifactor,
+                        this);
+        }
+
+        //paint blocks. legit
+        g.setColor(Color.BLACK);
+        Block[] blocks = world.getBlocks();
+        for (var block : blocks) {
+            Rectangle box = block.getHitbox();
+            if (!block.isFinish()) {
+                fillGameRectangle(g, box);
+            } else {
+                g.drawImage(
+                    ImageSet.flagIcon.getImage(),
+                    box.getTL().getX() / uifactor, box.getTL().getY() / uifactor,
+                    box.getWidth() / uifactor,
+                    box.getHeight() / uifactor,
+                    this);
+            }
+        }
+
+        //paint ship if on field. legit
+        Spaceship ship = world.getShipOnField();
+        if (ship != null) {
+            Rectangle r = ship.getHbox().upscale();
+            g.drawImage(ImageSet.shipIcon.getImage(),
+                    r.getTL().getX() / uifactor, r.getTL().getY() / uifactor,
+                    r.getWidth() / uifactor,
+                    r.getHeight() / uifactor,
+                    this);
+        }
+
+        //paint gems
+        for (Gem gem : world.getGemsOnField()) {
+            ImageIcon icon = ImageSet.iconFrom(gem);
+            if (icon == null) {
+                g.setColor(gem.getColor());
+                fillGameRectangle(g, gem.getHbox());
+            } else {
+                Rectangle gemBox = gem.getHbox();
+                g.drawImage(icon.getImage(),
+                            gemBox.getTL().getX() / uifactor, gemBox.getTL().getY() / uifactor,
+                            gemBox.getWidth() / uifactor,
+                            gemBox.getHeight() / uifactor,
+                            this);
+            }
+        }
+     
+
+        //write bag contents. legit
+        String txt = world.getPlayerBag().stringContents(); 
+        txt = txt + " |  F to dash, G to gravswitch"; 
+        bagDisplay.setText(txt);
+    }
+
+
+    
+    
+    
+    
+    
+        
+    
+    
+    /**
+     * LEGIT
+     */
+    private void fillGameRectangle(Graphics g, Rectangle rec) {
+    	int uiTlx = rec.getTL().getX() / uifactor;
+    	int uiTly = rec.getTL().getY() / uifactor;
+    	int uiwidth = rec.getWidth() / uifactor;
+    	int uiheight = rec.getHeight() / uifactor;
+    	g.fillRect(uiTlx, uiTly, uiwidth, uiheight);
+    }
+    
+    /**
+     * LEGIT
+     * 
+     * Needed to make animation fluent on linux.
+     */
+    private void pauseForBreath()
+    {
+        Toolkit.getDefaultToolkit().sync();
+    }
+}
+
