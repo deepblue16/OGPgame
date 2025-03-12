@@ -1,0 +1,169 @@
+package ogp.game;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
+/**
+ * Each instance of this class represents a bag that can store a spaceship and a list of gems.
+ * 
+ * @invar | getGems() != null
+ * @invar | getGems().stream().allMatch(g -> g != null)
+ */
+public class Bag {
+	
+	/**
+	 * Geeft aan of de player wel of niet een ship heeft.
+	 * 
+	 * @representationObject
+	 * ship null means not collected
+	 */
+	private Spaceship ship;
+	
+	/**
+	 * Stores a list of gems, cannot contain null elements
+	 * 
+	 * @invar | gems != null
+	 * @invar | gems.stream().allMatch(g -> g != null)
+	 * @representationObject
+	 */
+	private ArrayList<Gem> gems;
+	
+	public Spaceship getShip() {
+		return ship == null ? null : ship.copy();
+	}
+
+	
+	public ArrayList<Gem> getGems() {
+		return new ArrayList<>(gems);
+	}
+		
+	/**
+	 * Initialiseert dit object met een ship en een lijst van gems.
+	 * 
+	 * @throws IllegalArgumentException | gems == null || gems.contains(null)
+	 * @post | (ship == null ? getShip() == null : getShip().equals(ship))
+	 * @post | getGems().containsAll(gems) && gems.containsAll(getGems())
+	 */
+	public Bag(Spaceship ship, ArrayList<Gem> gems) {
+		if (gems == null || gems.contains(null)) 
+	        throw new IllegalArgumentException();
+		this.ship = ship == null ? null : ship.copy();;
+		this.gems = new ArrayList<>(gems);
+	}
+	
+	/** 
+	 * Stelt het schip in (of verwijdert het als null).
+	 * 
+	 * @mutates | this
+	 * @post | (ship == null ? getShip() == null : getShip().equals(ship))
+	 * @post | getGems().containsAll(old(getGems())) && old(getGems()).containsAll(getGems())
+	 */
+	public void setShip(Spaceship ship) {
+	    this.ship = ship == null ? null : ship.copy();
+	}
+
+	/**
+	 * Adds a gem to the bag.
+	 * 
+	 * @mutates | this
+	 * @pre | g != null
+	 * @post | getGems().contains(g)
+	 * @post | getGems().size() == old(getGems()).size() + 1
+	 */
+	public void addGem(Gem g) {
+		gems.add(g);
+	}
+
+	/**
+	 * Returns a copy of this Bag.
+	 * 
+	 * @creates | result
+	 * @post | (getShip() == null ? result.getShip() == null : result.getShip().equals(getShip()))
+	 * @post | result.getGems().containsAll(getGems()) && getGems().containsAll(result.getGems())
+	 */
+	public Bag copy() {
+	    return new Bag(ship == null ? null : ship.copy(), new ArrayList<>(gems));
+	}
+	
+	/**
+	 * If possible, upgrade the ship with u and remove a corresponding gem.
+	 * 
+	 * @pre | u != null
+	 * //@post | (old(getShip()) == null ? getShip() == null : getShip().equals(old(getShip())) 
+	 * @post | getGems().size() == old(getGems()).size() || getGems().size() == old(getGems()).size() - 1
+	 * @mutates | this
+	 */
+	//public void tryUpgradeShip(Upgrade u) {
+	//	int[] upgradeCounts = Upgrade.giveUpgradesFrom(gems);
+
+	//    for (Gem g : new ArrayList<>(gems)) {
+	//        Upgrade gemUpgrade = Upgrade.giveUpgradeFrom(g);
+
+	//        if (gemUpgrade == u) { 
+	//            gems.remove(g);
+	//            ship.upgrade(u);
+	//            break;
+	//        }
+	//    }
+	//}
+	
+	// VERANDERING 3 VOOR LAATSTE BUG
+	public void tryUpgradeShip(Upgrade u) {
+
+	    for (Gem g : new ArrayList<>(gems)) {
+	        Upgrade gemUpgrade = Upgrade.giveUpgradeFrom(g);
+
+	        if (gemUpgrade == u) { 
+	            if (!ship.hasUpgrade(u)) { // 🔥 Controleer of de upgrade al in het schip zit
+	                gems.remove(g);  // ✅ Alleen verwijderen als de upgrade nog niet in het schip zit
+	                ship.upgrade(u); // ✅ Voeg de upgrade toe aan het schip
+	                System.out.println("Upgrade toegevoegd aan schip: " + u);
+	            } else {
+	                System.out.println("Schip heeft al upgrade: " + u + ", gem blijft in de bag.");
+	            }
+	            break; // Stop na de eerste match
+	        }
+	    }
+	}
+
+	
+	
+	
+
+	/**
+	 * LEGIT
+	 */
+	public String stringContents() {
+		String res = "SHIP:0   ";
+		if (ship != null) {
+			res = "SHIP:1" + " ( " + ship.contents() + ")    ";
+		}
+
+    	int[] upgradeNumbers = Upgrade.giveUpgradesFrom(gems);
+    	for (Upgrade u : Upgrade.values() ) {
+    		res = res + u.toSmallString() + ": " + upgradeNumbers[u.idx()] + "  "; 
+    	}
+    	return res;
+	}
+	
+	/**
+	 * Attempts to upgrade the ship from the list of gems.
+	 * Has some effect if
+	 * - ship != null
+	 * - ship is missing some upgrades
+	 * - some of these missing upgrades appear in the list of gems (see Upgrade.giveUpgradeFrom)
+	 * In that case some gems are deleted and serve to upgrade the ship. 
+	 * 
+	 * @mutates | this
+	 */
+	public void update() {
+		
+		if (ship == null) return;
+		
+		for (Upgrade u : Upgrade.values()) {
+			tryUpgradeShip(u);
+		}
+		
+	}
+}
