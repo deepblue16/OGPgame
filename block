@@ -1,0 +1,63 @@
+package ogp.game;
+
+import ogp.util.Rectangle;
+
+/**
+ * Each instance of this class represents a rectangular block in the game.
+ * A block has a fixed hitbox and can optionally be a finish block.
+ * 
+ * @immutable
+ * @invar The hitbox of this block is not null.
+ *    | getHitbox() != null
+ */
+public class Block {
+	
+	/**	
+	 * @invar | hitbox != null
+	*/
+	private final Rectangle hitbox;
+	private final boolean isFinish;
+	
+	public Rectangle getHitbox() {
+		return hitbox;
+	}
+	
+	public boolean isFinish() {
+		return isFinish;
+	}
+	
+	/**
+	 * Initializes a new block with the given hitbox.
+	 * @throws IllegalArgumentException if the given hitbox is null.
+	 *    | box == null
+	 * @post The hitbox of this block is the same as the given hitbox.
+	 *    | getHitbox() == box
+	 * @post This block is not a finish block.
+	 *    | !isFinish()
+	 */
+	public Block(Rectangle box) {
+		if (box == null)
+            throw new IllegalArgumentException("Hitbox mag niet null zijn.");
+		this.hitbox = box;
+		this.isFinish = false;
+	}
+	
+	/**
+	 * Initializes a new block with the given hitbox and finish status.
+	 * @throws IllegalArgumentException if the given hitbox is null.
+	 *    | box == null
+	 * @post The hitbox of this block is the same as the given hitbox.
+	 *    | getHitbox() == box
+	 * @post This block's finish status equals the given status.
+	 *    | isFinish() == isf
+	 */
+	public Block(Rectangle box, boolean isf) {
+		if (box == null)
+            throw new IllegalArgumentException("Hitbox mag niet null zijn.");
+		this.hitbox = box;
+		this.isFinish = isf; // hier was er een FLAW ! er was geen 'this.' en daardoor werd isFinish nooit veranderd !
+	}
+	
+
+
+}
