@@ -1,0 +1,142 @@
+package ogp.game;
+
+import java.util.ArrayList;
+
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.IntStream;
+
+import ogp.util.Point;
+import ogp.util.Rectangle;
+/**
+ * Each instance of this class represents a spaceship in the game.
+ * @invar | getHbox() != null
+ * @invar | getUpgrades() != null
+ * @invar | getUpgrades().size() <= Upgrade.values().length
+ * @invar | getUpgrades().stream().allMatch(u -> u != null)
+ */
+public class Spaceship {
+	
+	/**
+	 * @invar | hbox != null
+	 */
+	private Rectangle hbox; 
+	
+	/**
+	 * @representationObject
+	 * @invar | upgrades != null
+     * @invar | upgrades.size() <= Upgrade.values().length
+     * @invar | upgrades.stream().allMatch(u -> u != null)
+	 */
+	private ArrayList<Upgrade> upgrades;
+	
+    /**
+     * Initializes a spaceship with a given hitbox and a list of upgrades.
+     * 
+     * @post | getHbox() == hbox
+     * @post | getUpgrades().containsAll(upgrades) && upgrades.containsAll(getUpgrades())
+     * @post | getUpgrades() != upgrades
+     */
+	public Spaceship(Rectangle hbox, ArrayList<Upgrade> upgrades) {
+		if (hbox == null) { throw new IllegalArgumentException() ; }
+		this.hbox = hbox;
+				
+		if (upgrades == null) { throw new IllegalArgumentException() ;}
+		if (upgrades.size() > Upgrade.values().length) { throw new IllegalArgumentException() ;}
+		if (upgrades.stream().anyMatch(u -> u ==null)) { throw new IllegalArgumentException() ;}
+		this.upgrades = new ArrayList<Upgrade>(upgrades); // FLAW want naam veld == naam variabele !
+	}
+	
+	public Rectangle getHbox() {
+		return hbox;
+	}
+	
+	public ArrayList<Upgrade> getUpgrades() {
+		return new ArrayList<>(upgrades);  // FLAW representation exposure
+	}
+
+	/**
+	 * Applies an upgrade to the spaceship if it is not already present.
+	 *
+	 * @pre | u != null
+	 * @mutates | this
+	 * @post | getUpgrades().containsAll(old(getUpgrades()))
+	 * @post | getUpgrades().size() == old(getUpgrades()).size() || 
+	 *       | getUpgrades().size() == old(getUpgrades()).size() + 1
+	 * @post | new HashSet<>(getUpgrades()).size() == getUpgrades().size()
+	 */
+	public void upgrade(Upgrade u) {
+		
+		if (!upgrades.contains(u)) {
+            upgrades.add(u);
+            } // FLAW => dupliceer upgrade zonder check
+	} 
+	
+	/**
+	 * Returns a copy of this spaceship.
+	 * 
+	 * @creates | result, result.getUpgrades()
+     * @post | result.getHbox().equals(getHbox())
+     * @post | result.getUpgrades().containsAll(getUpgrades()) && getUpgrades().containsAll(result.getUpgrades())
+	 */
+	public Spaceship copy() {
+		return new Spaceship(new Rectangle(new Point(hbox.getTL().getX(), hbox.getTL().getY()), hbox.getWidth(), hbox.getHeight()), 
+                new ArrayList<>(upgrades));
+	}
+	
+	/**
+	 * LEGIT
+	 */
+	@Override
+	public int hashCode() {
+		return Objects.hash(hbox.hashCode(), Arrays.hashCode( upgrades.toArray()));
+	}
+	
+	/**
+	 * LEGIT
+	 */
+	@Override
+	public boolean equals(Object obj) {
+        if (this == obj) return true; // reference equality
+        if (obj == null || getClass() != obj.getClass()) return false; // type compatibility
+        Spaceship jp = (Spaceship) obj; // Safe cast
+        return this.hbox.equals(jp.getHbox()) && this.upgrades.equals(jp.upgrades);
+	}
+	
+	/**
+	 * LEGIT
+	 * 
+	 * list of upgrades (no duplication), using Upgrade.toSmallString
+	 */
+	public String contents() {
+		String res = "";
+		for (Upgrade u : Upgrade.values()) {
+			if (upgrades.contains(u)) { res += u.toSmallString() + " ";} 
+		}
+		return res;
+	}
+
+	/**
+	 * EIGEN METHODE
+	 * 
+     * Checks whether this spaceship has the given upgrade.
+     *
+     * @pre | u != null
+     * @inspects | this
+     * @post | result == getUpgrades().contains(u)
+	 */
+	public boolean hasUpgrade(Upgrade u) {
+	    return upgrades.contains(u);
+	}
+
+
+
+
+	
+
+	
+	
+}
