@@ -1,0 +1,76 @@
+package ogp.game;
+
+import java.awt.Color;
+
+import ogp.util.Rectangle;
+
+/**
+ * Each instance of this class represents a collectible gem in the game.
+ * The gem has a hitbox that defines its position and a color that determines its effect.
+ *
+ * @immutable
+ * @invar The hitbox of this gem is not null
+ *    | getHbox() != null
+ * @invar The color of this gem is not null.
+ *    | getColor() != null
+ */
+public class Gem {
+	
+	/**
+     * @invar | hbox != null
+     * @invar | color != null
+     */
+	private final Rectangle hbox;
+	private final Color color;
+	
+	public Rectangle getHbox() { 
+	    return hbox; 
+	}
+
+	public Color getColor() {
+	    return color;
+	}
+	
+	/**
+     * Initializes a new gem with the given hitbox and color.
+     * 
+     * @throws IllegalArgumentException if the given hitbox is null.
+     *    | hbox == null
+     * @throws IllegalArgumentException if the given color is null.
+     *    | color == null
+     * @post The color of this gem equals the given color.
+     *    | getColor() == color
+     * @post The hitbox of this gem is a scaled version of the given hitbox.
+     * 	  | getHbox().getTL().equals(hbox.getTL()) &&
+     * 	  | getHbox().getWidth() == hbox.getWidth() * 2 &&
+     * 	  | getHbox().getHeight() == hbox.getHeight() * 2
+     */
+	public Gem(Rectangle hbox, Color color) {
+		if (hbox == null)
+            throw new IllegalArgumentException();
+		this.hbox = new Rectangle(hbox.getTL(), hbox.getWidth()*2, hbox.getHeight()*2);
+		
+		if (color == null) { throw new IllegalArgumentException(); }
+		this.color = color;
+	}
+	
+	@Override
+	/**
+	 * LEGIT
+	 */
+	public int hashCode() {
+		return super.hashCode();
+	}
+	
+	@Override
+	/**
+	 * LEGIT
+	 * 
+	 * Reference equality.
+	 */
+	public boolean equals(Object obj) {
+        return super.equals(obj);
+	}
+	
+
+}
