@@ -1,5 +1,6 @@
 package ogp.game;
 
+
 import java.awt.Color;
 
 import ogp.util.Rectangle;
